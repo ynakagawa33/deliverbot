@@ -7,7 +7,6 @@ import (
 	"golang.org/x/oauth2"
 	"io/ioutil"
 	"log"
-	"strings"
 	"time"
 )
 
@@ -62,14 +61,14 @@ func (g *GitHubService) DefaultBranch() (*string, error) {
 	return &defaultBranch, nil
 }
 
-func (g *GitHubService) Branches() ([]github.Branch, error) {
+func (g *GitHubService) Branches() ([]*github.Branch, error) {
 	branches, _, err := g.Client.Repositories.ListBranches(context.Background(), g.Repository.Owner, g.Repository.Name, &github.ListOptions{
 		PerPage: 100,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub branches: %s", err)
 	}
-	return filter(branches, func(branch github.Branch) bool { return !strings.Contains(branch.GetName(), "/") }), nil
+	return branches, nil
 }
 
 func (g *GitHubService) File(branch, path string) ([]byte, error) {
@@ -86,16 +85,6 @@ func (g *GitHubService) File(branch, path string) ([]byte, error) {
 	}
 
 	return bytes, nil
-}
-
-func filter(vs []*github.Branch, f func(github.Branch) bool) []github.Branch {
-	vsf := make([]github.Branch, 0)
-	for _, v := range vs {
-		if f(*v) {
-			vsf = append(vsf, *v)
-		}
-	}
-	return vsf
 }
 
 // CreateBranch returns the commit branch reference object if it exists or creates it
