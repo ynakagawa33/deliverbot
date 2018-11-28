@@ -69,7 +69,7 @@ func (g *GitHubService) Branches() ([]github.Branch, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch GitHub branches: %s", err)
 	}
-	return filter(branches, func(branch github.Branch) bool { return !strings.Contains(branch.GetName(), "/") }), nil
+	return branches, nil
 }
 
 func (g *GitHubService) File(branch, path string) ([]byte, error) {
