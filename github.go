@@ -52,6 +52,14 @@ func NewGitHubService(token string, repo GitHubRepository, author CommitAuthor, 
 	}
 }
 
+func (g *GitHubService) User(userName string)(*github.User, error) {
+	user, _, err := g.Client.Users.Get(context.Background(), userName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch GitHub user: %s", err)
+	}
+	return user, nil
+}
+
 func (g *GitHubService) DefaultBranch() (*string, error) {
 	repo, _, err := g.Client.Repositories.Get(context.Background(), g.Repository.Owner, g.Repository.Name)
 	if err != nil {
