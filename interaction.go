@@ -361,14 +361,14 @@ func buildNumberOptions(parameters BuildParameters) []slack.AttachmentAction {
 func runOptions(parameters BuildParameters) []slack.AttachmentAction {
 	releaseAction := slack.AttachmentAction{
 		Name:  actionRelease,
-		Text:  " TestFlight ⚙ Beta",
+		Text:  " TestFlight",
 		Value: parameters.string(),
 		Type:  "button",
 		Style: "primary",
 	}
 	internalAction := slack.AttachmentAction{
 		Name:  actionInternal,
-		Text:  "⚙ Fabric Beta",
+		Text:  "⚙ Beta",
 		Value: parameters.string(),
 		Type:  "button",
 	}
@@ -395,7 +395,7 @@ func branchPrefix(actionName string) string {
 	case actionRelease:
 		return "_release"
 	case actionInternal:
-		return "_fabric-beta"
+		return "_beta"
 	}
 	return "null"
 }
@@ -405,7 +405,7 @@ func destination(actionName string) string {
 	case actionRelease:
 		return "TestFlight"
 	case actionInternal:
-		return "Fabric Beta"
+		return "Beta"
 	}
 	return "Unknown"
 }
