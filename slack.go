@@ -12,7 +12,6 @@ const (
 	actionVersion     = "version"
 	actionBuildNumber = "buildNumber"
 	actionRelease     = "release"
-	actionExternal    = "external"
 	actionInternal    = "internal"
 	actionCancel      = "cancel"
 

@@ -179,7 +179,7 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		currentVersion := fmt.Sprintf("%s (%s)", parameters.CurrentVersion, parameters.CurrentBuildNumber)
 		nextVersion := fmt.Sprintf("%s (%s)", parameters.Version, parameters.BuildNumber)
 		responseAction(w, message.OriginalMessage, fmt.Sprintf("Branch: `%s` ✔︎\nCurrent Version: `%s`\nNext Version: `%s` ✔︎", parameters.Branch, currentVersion, nextVersion), runOptions(parameters))
-	case actionRelease, actionExternal, actionInternal:
+	case actionRelease, actionInternal:
 		// FIXME
 
 		bytes, err := ioutil.ReadFile(parameters.InfoPlist)
@@ -361,26 +361,19 @@ func buildNumberOptions(parameters BuildParameters) []slack.AttachmentAction {
 func runOptions(parameters BuildParameters) []slack.AttachmentAction {
 	releaseAction := slack.AttachmentAction{
 		Name:  actionRelease,
-		Text:  " TestFlight ⚙ Beta",
+		Text:  " TestFlight",
 		Value: parameters.string(),
 		Type:  "button",
 		Style: "primary",
 	}
-	externalAction := slack.AttachmentAction{
-		Name:  actionExternal,
-		Text:  " TestFlight",
-		Value: parameters.string(),
-		Type:  "button",
-	}
 	internalAction := slack.AttachmentAction{
 		Name:  actionInternal,
-		Text:  "⚙ Fabric Beta",
+		Text:  "⚙ Beta",
 		Value: parameters.string(),
 		Type:  "button",
 	}
 	actions := []slack.AttachmentAction{
 		releaseAction,
-		externalAction,
 		internalAction,
 		cancelAction(),
 	}
@@ -401,10 +394,8 @@ func branchPrefix(actionName string) string {
 	switch actionName {
 	case actionRelease:
 		return "_release"
-	case actionExternal:
-		return "_testflight"
 	case actionInternal:
-		return "_fabric-beta"
+		return "_beta"
 	}
 	return "null"
 }
@@ -412,38 +403,35 @@ func branchPrefix(actionName string) string {
 func destination(actionName string) string {
 	switch actionName {
 	case actionRelease:
-		return "TestFlight and Beta"
-	case actionExternal:
 		return "TestFlight"
 	case actionInternal:
-		return "Fabric Beta"
+		return "Beta"
 	}
 	return "Unknown"
 }
 
 func generateChangeLog(service *GitHubService, nextVersion string, branch string) string {
-	return ""
-	//latestTag, err := service.LatestTag()
-	//if err != nil {
-	//	return ""
-	//}
-	//commits, err := service.Commits(*latestTag.Name, branch)
-	//if err != nil {
-	//	return ""
-	//}
-	//
-	//changelog := []string{}
-	//for _, commit := range commits {
-	//	var message = *commit.Commit.Message
-	//	if *commit.Commit.Committer.Name == "GitHub" && strings.HasPrefix(message, "Merge pull request") {
-	//		message = ":twisted_rightwards_arrows: " + strings.Join(strings.Fields(message)[:4], " ")
-	//	}
-	//	log := fmt.Sprintf("* %s [%s](%s) ([%s](%s))", strings.Split(message, "\n")[0], (*commit.SHA)[:7], *commit.HTMLURL, *commit.Author.Login, *commit.Author.HTMLURL)
-	//	changelog = append([]string{log}, changelog...)
-	//}
-	//
-	//section := fmt.Sprintf("## [%s](https://github.com/%s/%s/compare/%s...%s) (%s)", nextVersion, service.Repository.Owner, service.Repository.Name, *latestTag.Name, branch, time.Now().Format("2006-01-02"))
-	//changelog = append([]string{section}, changelog...)
-	//
-	//return strings.Join(changelog, "\n")
+	latestTag, err := service.LatestTag()
+	if err != nil {
+		return ""
+	}
+	commits, err := service.Commits(*latestTag.Name, branch)
+	if err != nil {
+		return ""
+	}
+
+	changelog := []string{}
+	for _, commit := range commits {
+		var message = *commit.Commit.Message
+		if *commit.Commit.Committer.Name == "GitHub" && strings.HasPrefix(message, "Merge pull request") {
+			message = ":twisted_rightwards_arrows: " + strings.Join(strings.Fields(message)[:4], " ")
+		}
+		log := fmt.Sprintf("* %s [%s](%s) ([%s](%s))", strings.Split(message, "\n")[0], (*commit.SHA)[:7], *commit.HTMLURL, *commit.Author.Login, *commit.Author.HTMLURL)
+		changelog = append([]string{log}, changelog...)
+	}
+
+	section := fmt.Sprintf("## [%s](https://github.com/%s/%s/compare/%s...%s) (%s)", nextVersion, service.Repository.Owner, service.Repository.Name, *latestTag.Name, branch, time.Now().Format("2006-01-02"))
+	changelog = append([]string{section}, changelog...)
+
+	return strings.Join(changelog, "\n")
 }
