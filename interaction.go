@@ -179,7 +179,7 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		currentVersion := fmt.Sprintf("%s (%s)", parameters.CurrentVersion, parameters.CurrentBuildNumber)
 		nextVersion := fmt.Sprintf("%s (%s)", parameters.Version, parameters.BuildNumber)
 		responseAction(w, message.OriginalMessage, fmt.Sprintf("Branch: `%s` ✔︎\nCurrent Version: `%s`\nNext Version: `%s` ✔︎", parameters.Branch, currentVersion, nextVersion), runOptions(parameters))
-	case actionRelease, actionExternal, actionInternal:
+	case actionRelease, actionInternal:
 		// FIXME
 
 		bytes, err := ioutil.ReadFile(parameters.InfoPlist)
@@ -366,12 +366,6 @@ func runOptions(parameters BuildParameters) []slack.AttachmentAction {
 		Type:  "button",
 		Style: "primary",
 	}
-	externalAction := slack.AttachmentAction{
-		Name:  actionExternal,
-		Text:  " TestFlight",
-		Value: parameters.string(),
-		Type:  "button",
-	}
 	internalAction := slack.AttachmentAction{
 		Name:  actionInternal,
 		Text:  "⚙ Fabric Beta",
@@ -380,7 +374,6 @@ func runOptions(parameters BuildParameters) []slack.AttachmentAction {
 	}
 	actions := []slack.AttachmentAction{
 		releaseAction,
-		externalAction,
 		internalAction,
 		cancelAction(),
 	}
@@ -401,8 +394,6 @@ func branchPrefix(actionName string) string {
 	switch actionName {
 	case actionRelease:
 		return "_release"
-	case actionExternal:
-		return "_testflight"
 	case actionInternal:
 		return "_fabric-beta"
 	}
@@ -412,8 +403,6 @@ func branchPrefix(actionName string) string {
 func destination(actionName string) string {
 	switch actionName {
 	case actionRelease:
-		return "TestFlight and Beta"
-	case actionExternal:
 		return "TestFlight"
 	case actionInternal:
 		return "Fabric Beta"
