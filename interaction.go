@@ -335,9 +335,8 @@ func buildNumberOptions(parameters BuildParameters) []slack.AttachmentAction {
 
 	nextBuildNumber := parameters.NextBuildNumber
 	number, _ := strconv.Atoi(nextBuildNumber)
-	number++
 	var options []slack.AttachmentActionOption
-	for i := number; i <= number+5; i++ {
+	for i := 1; i <= number+5; i++ {
 		buildNumber := strconv.Itoa(i)
 		parameters.BuildNumber = buildNumber
 		options = append(options, slack.AttachmentActionOption{
