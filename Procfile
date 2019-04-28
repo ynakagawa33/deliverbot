@@ -1,1 +1,1 @@
-web: deliverbot --config ./config.toml --port $PORT
+worker: deliverbot --config ./config.toml --port $PORT
