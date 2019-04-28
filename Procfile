@@ -1,1 +1,1 @@
-web: deliverbot --config ~/deliverbot/config.toml
+web: deliverbot --config ./config.toml
