@@ -20,6 +20,7 @@ type Config struct {
 	InfoPlistPath         string
 	ConfigurationDirectoryPath string
 	CommaSeparatedEnvironments string
+	DefaultEnvironment         string
 }
 
 type envConfig struct {
@@ -37,6 +38,7 @@ type envConfig struct {
 	InfoPlistPath         string `envconfig:"INFOPLIST_PATH"`
 	ConfigurationDirectoryPath string `envconfig:"CONFIGURATION_DIRECTORY_PATH"`
 	CommaSeparatedEnvironments string `envconfig:"COMMA_SEPARATED_ENVIRONMENTS"`
+	DefaultEnvironment         string `envconfig:"DEFAULT_ENVIRONMENT"`
 }
 
 type tomlConfig struct {
@@ -54,6 +56,7 @@ type tomlConfig struct {
 	InfoPlistPath         string `toml:"infoplist_path"`
 	ConfigurationDirectoryPath string `toml:"configuration_directory_path"`
 	CommaSeparatedEnvironments string `toml:"comma_separated_environments"`
+	DefaultEnvironment         string `toml:"default_environment"`
 }
 
 func LoadConfig(path, region string) (*Config, error) {
@@ -126,6 +129,10 @@ func LoadConfig(path, region string) (*Config, error) {
 	config.CommaSeparatedEnvironments = tc.CommaSeparatedEnvironments
 	if env.CommaSeparatedEnvironments != "" {
 		config.CommaSeparatedEnvironments = env.CommaSeparatedEnvironments
+	}
+	config.DefaultEnvironment = tc.DefaultEnvironment
+	if env.DefaultEnvironment != "" {
+		config.DefaultEnvironment = env.DefaultEnvironment
 	}
 
 	return &config, nil
