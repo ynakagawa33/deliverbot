@@ -18,6 +18,8 @@ type Config struct {
 	GitCommitAuthorName   string
 	GitCommitAuthorEmail  string
 	InfoPlistPath         string
+	ConfigurationDirectoryPath string
+	CommaSeparatedEnvironments string
 }
 
 type envConfig struct {
@@ -33,6 +35,8 @@ type envConfig struct {
 	GitCommitAuthorName   string `envconfig:"GIT_COMMIT_AUTHOR_NAME"`
 	GitCommitAuthorEmail  string `envconfig:"GIT_COMMIT_AUTHOR_EMAIL"`
 	InfoPlistPath         string `envconfig:"INFOPLIST_PATH"`
+	ConfigurationDirectoryPath string `envconfig:"CONFIGURATION_DIRECTORY_PATH"`
+	CommaSeparatedEnvironments string `envconfig:"COMMA_SEPARATED_ENVIRONMENTS"`
 }
 
 type tomlConfig struct {
@@ -48,6 +52,8 @@ type tomlConfig struct {
 	GitCommitAuthorName   string `toml:"github_commit_author_name"`
 	GitCommitAuthorEmail  string `toml:"github_commit_author_email"`
 	InfoPlistPath         string `toml:"infoplist_path"`
+	ConfigurationDirectoryPath string `toml:"configuration_directory_path"`
+	CommaSeparatedEnvironments string `toml:"comma_separated_environments"`
 }
 
 func LoadConfig(path, region string) (*Config, error) {
@@ -112,6 +118,14 @@ func LoadConfig(path, region string) (*Config, error) {
 	config.InfoPlistPath = tc.InfoPlistPath
 	if env.InfoPlistPath != "" {
 		config.InfoPlistPath = env.InfoPlistPath
+	}
+	config.ConfigurationDirectoryPath = tc.ConfigurationDirectoryPath
+	if env.ConfigurationDirectoryPath != "" {
+		config.ConfigurationDirectoryPath = env.ConfigurationDirectoryPath
+	}
+	config.CommaSeparatedEnvironments = tc.CommaSeparatedEnvironments
+	if env.CommaSeparatedEnvironments != "" {
+		config.CommaSeparatedEnvironments = env.CommaSeparatedEnvironments
 	}
 
 	return &config, nil
