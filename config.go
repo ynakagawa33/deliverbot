@@ -54,7 +54,7 @@ type tomlConfig struct {
 	GitCommitAuthorName   string `toml:"github_commit_author_name"`
 	GitCommitAuthorEmail  string `toml:"github_commit_author_email"`
 	ConfigurationDirectoryPath string `toml:"configuration_directory_path"`
-	ConfigurationFileExtension string `toml:configuration_file_extension`
+	ConfigurationFileExtension string `toml:"configuration_file_extension"`
 	CommaSeparatedEnvironments string `toml:"comma_separated_environments"`
 	DefaultEnvironment         string `toml:"default_environment"`
 }
