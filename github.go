@@ -28,8 +28,8 @@ type CommitAuthor struct {
 }
 
 type FileChange struct {
-	Content   []byte `json:"content"`
-	Path      string `json:"path"`
+	Content   []byte
+	Path      string
 }
 
 type PullRequest struct {

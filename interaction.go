@@ -70,28 +70,6 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var nextMinor string
 		var nextMajor string
 		var nextBuildNumber string
-		var fileChanges []FileChange
-
-		for _, environment := range h.environments {
-			path := h.configurationDirectoryPath + environment + h.configurationFileExtension
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				break
-			}
-			file, err := service.File(parameters.Branch, path)
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			fileChanges = append(fileChanges, FileChange {
-				Content: file,
-				Path:    path,
-			})
-		}
-		if len(fileChanges) != len(h.environments) {
-			responseError(w, message.OriginalMessage, "Precondition failed. This is because fileChanges length not equal h.environments length.", fmt.Sprintf("len(fileChanges):%d len(h.environments):%d", len(fileChanges), len(h.environments)))
-			return
-		}
 
 		file, err := service.File(parameters.Branch, service.XcconfigPath)
 		if err != nil {
@@ -147,7 +125,6 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			NextMinor:          nextMinor,
 			NextMajor:          nextMajor,
 			NextBuildNumber:    nextBuildNumber,
-			FileChanges:        fileChanges,
 		}
 
 		responseAction(w, message.OriginalMessage, fmt.Sprintf("Branch: `%s` ✔︎\nCurrent Version: `%s (%s)`\nNext Version:", parameters.Branch, currentVersion, currentBuildNumber), versionOptions(buildParameters))
@@ -165,12 +142,22 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		responseMessage(w, message.OriginalMessage, fmt.Sprintf("Releasing `%s` to %s ...", nextVersion, destination(action.Name)), "")
 
 		go func() {
+			fileChanges := []FileChange{}
 			appVersionRegex := regexp.MustCompile(`^(APP_VERSION\s*=\s*)(([0-9]\.*)+)$`)
 			buildVersionRegex := regexp.MustCompile(`^(BUILD_VERSION\s*=\s*)([0-9]+)$`)
-			fileChanges := []FileChange{}
-			for _, fileChange := range parameters.FileChanges {
+			for _, environment := range h.environments {
+				path := h.configurationDirectoryPath + environment + h.configurationFileExtension
+				if err != nil {
+					responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
+					break
+				}
+				file, err := service.File(parameters.Branch, path)
+				if err != nil {
+					responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
+					return
+				}
 				rawFileContents := ""
-				lines := strings.Split(string(fileChange.Content), "\n")
+				lines := strings.Split(string(file), "\n")
 				for _, line := range lines {
 					line = appVersionRegex.ReplaceAllString(line, "$1" + parameters.Version)
 					line = buildVersionRegex.ReplaceAllString(line, "$1" + parameters.BuildNumber)
@@ -179,9 +166,14 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				bytes := []byte(rawFileContents)
 				fileChanges = append(fileChanges, FileChange {
 					Content: bytes,
-					Path: fileChange.Path,
+					Path:    path,
 				})
 			}
+			if len(fileChanges) != len(h.environments) {
+				responseError(w, message.OriginalMessage, "Precondition failed. This is because fileChanges length not equal h.environments length.", fmt.Sprintf("len(fileChanges):%d len(h.environments):%d", len(fileChanges), len(h.environments)))
+				return
+			}
+
 			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 			commitBranch := fmt.Sprintf("%s/%s-%s-%s", branchPrefix(action.Name), parameters.Version, parameters.BuildNumber, timestamp)
 			title := fmt.Sprintf("Release %s (%s)", parameters.Version, parameters.BuildNumber)
