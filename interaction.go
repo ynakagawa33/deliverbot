@@ -89,6 +89,7 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		if len(fileChanges) != len(h.environments) {
+			responseError(w, message.OriginalMessage, "Precondition failed. This is because fileChanges length not equal h.environments length.", fmt.Sprintf("len(fileChanges):%d len(h.environments):%d", len(fileChanges), len(h.environments)))
 			return
 		}
 
