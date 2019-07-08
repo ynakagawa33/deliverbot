@@ -17,8 +17,8 @@ type Config struct {
 	GitHubRepositoryName  string
 	GitCommitAuthorName   string
 	GitCommitAuthorEmail  string
-	InfoPlistPath         string
 	ConfigurationDirectoryPath string
+	ConfigurationFileExtension string
 	CommaSeparatedEnvironments string
 	DefaultEnvironment         string
 }
@@ -35,8 +35,8 @@ type envConfig struct {
 	GitHubRepositoryName  string `envconfig:"GITHUB_REPOSITORY_NAME"`
 	GitCommitAuthorName   string `envconfig:"GIT_COMMIT_AUTHOR_NAME"`
 	GitCommitAuthorEmail  string `envconfig:"GIT_COMMIT_AUTHOR_EMAIL"`
-	InfoPlistPath         string `envconfig:"INFOPLIST_PATH"`
 	ConfigurationDirectoryPath string `envconfig:"CONFIGURATION_DIRECTORY_PATH"`
+	ConfigurationFileExtension string `envconfig:CONFIGURATION_FILE_EXTENSION`
 	CommaSeparatedEnvironments string `envconfig:"COMMA_SEPARATED_ENVIRONMENTS"`
 	DefaultEnvironment         string `envconfig:"DEFAULT_ENVIRONMENT"`
 }
@@ -53,8 +53,8 @@ type tomlConfig struct {
 	GitHubRepositoryName  string `toml:"github_repository_name"`
 	GitCommitAuthorName   string `toml:"github_commit_author_name"`
 	GitCommitAuthorEmail  string `toml:"github_commit_author_email"`
-	InfoPlistPath         string `toml:"infoplist_path"`
 	ConfigurationDirectoryPath string `toml:"configuration_directory_path"`
+	ConfigurationFileExtension string `toml:configuration_file_extension`
 	CommaSeparatedEnvironments string `toml:"comma_separated_environments"`
 	DefaultEnvironment         string `toml:"default_environment"`
 }
@@ -118,13 +118,13 @@ func LoadConfig(path, region string) (*Config, error) {
 	if env.GitCommitAuthorEmail != "" {
 		config.GitCommitAuthorEmail = env.GitCommitAuthorEmail
 	}
-	config.InfoPlistPath = tc.InfoPlistPath
-	if env.InfoPlistPath != "" {
-		config.InfoPlistPath = env.InfoPlistPath
-	}
 	config.ConfigurationDirectoryPath = tc.ConfigurationDirectoryPath
 	if env.ConfigurationDirectoryPath != "" {
 		config.ConfigurationDirectoryPath = env.ConfigurationDirectoryPath
+	}
+	config.ConfigurationFileExtension = tc.ConfigurationFileExtension
+	if env.ConfigurationFileExtension != "" {
+		config.ConfigurationFileExtension = env.ConfigurationFileExtension
 	}
 	config.CommaSeparatedEnvironments = tc.CommaSeparatedEnvironments
 	if env.CommaSeparatedEnvironments != "" {

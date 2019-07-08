@@ -13,7 +13,7 @@ import (
 type GitHubService struct {
 	Repository    GitHubRepository
 	Author        CommitAuthor
-	InfoPlistPath string
+	XcconfigPath  string
 	Client        *github.Client
 }
 
@@ -27,16 +27,20 @@ type CommitAuthor struct {
 	Email string
 }
 
+type FileChange struct {
+	Content   []byte
+	Path      string
+}
+
 type PullRequest struct {
 	TargetBranch  string
 	CommitBranch  string
-	FileContent   []byte
-	FilePath      string
+	FileChanges   []FileChange
 	Title         string
 	CommitMessage string
 }
 
-func NewGitHubService(token string, repo GitHubRepository, author CommitAuthor, infoPlistPath string) *GitHubService {
+func NewGitHubService(token string, repo GitHubRepository, author CommitAuthor, xcconfigPath string) *GitHubService {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -48,7 +52,7 @@ func NewGitHubService(token string, repo GitHubRepository, author CommitAuthor, 
 		Repository:    repo,
 		Author:        author,
 		Client:        client,
-		InfoPlistPath: infoPlistPath,
+		XcconfigPath:  xcconfigPath,
 	}
 }
 
@@ -113,9 +117,14 @@ func (g *GitHubService) CreateBranch(from, to string) (ref *github.Reference, er
 
 // GetTree generates the tree to commit based on the given files and the commit
 // of the ref you got in getRef.
-func (g *GitHubService) CreateTree(ref *github.Reference, content []byte, path string) (tree *github.Tree, err error) {
+func (g *GitHubService) CreateTree(ref *github.Reference, fileChanges []FileChange) (tree *github.Tree, err error) {
 	entries := []github.TreeEntry{}
-	entries = append(entries, github.TreeEntry{Path: github.String(path), Type: github.String("blob"), Content: github.String(string(content)), Mode: github.String("100644")})
+
+	// Load each file into the tree.
+	for _, fileChange := range fileChanges {
+		entries = append(entries, github.TreeEntry{Path: github.String(fileChange.Path), Type: github.String("blob"), Content: github.String(string(fileChange.Content)), Mode: github.String("100644")})
+	}
+	
 	tree, _, err = g.Client.Git.CreateTree(context.Background(), g.Repository.Owner, g.Repository.Name, *ref.Object.SHA, entries)
 	return tree, err
 }
@@ -177,7 +186,7 @@ func (g *GitHubService) PushPullRequest(pullRequest PullRequest) (*string, error
 		return nil, err
 	}
 
-	tree, err := g.CreateTree(ref, pullRequest.FileContent, pullRequest.FilePath)
+	tree, err := g.CreateTree(ref, pullRequest.FileChanges)
 	if err != nil {
 		sugar.Errorf("Unable to create the tree based on the provided files: %s\n", err)
 		return nil, err

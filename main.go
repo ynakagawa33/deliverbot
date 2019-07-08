@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"os"
+	"strings"
 )
 
 var (
@@ -36,12 +37,9 @@ func _main(_ []string) int {
 			return fmt.Errorf("failed to load toml file: %s", err)
 		}
 
-		// FIXME: Pass Version.xcconfig path from env
-		config.InfoPlistPath = "Configurations/Version.xcconfig"
-
 		repo := GitHubRepository{Owner: config.GitHubRepositoryOwner, Name: config.GitHubRepositoryName}
 		author := CommitAuthor{Name: config.GitCommitAuthorName, Email: config.GitCommitAuthorEmail}
-		service = NewGitHubService(config.GitHubToken, repo, author, config.InfoPlistPath)
+		service = NewGitHubService(config.GitHubToken, repo, author, config.ConfigurationDirectoryPath + config.DefaultEnvironment + config.ConfigurationFileExtension)
 
 		sugar.Infof("Start slack event listening")
 		client := slack.New(config.BotToken)
@@ -56,6 +54,9 @@ func _main(_ []string) int {
 		http.Handle("/interaction", interactionHandler{
 			slackClient:       client,
 			verificationToken: config.VerificationToken,
+			configurationDirectoryPath: config.ConfigurationDirectoryPath,
+			configurationFileExtension: config.ConfigurationFileExtension,
+			environments:      strings.Split(config.CommaSeparatedEnvironments, ","),
 		})
 
 		sugar.Infof("Server listening on :%s", c.String("port"))

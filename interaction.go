@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"github.com/blang/semver"
 	"github.com/nlopes/slack"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +17,9 @@ import (
 type interactionHandler struct {
 	slackClient       *slack.Client
 	verificationToken string
+	configurationDirectoryPath string
+	configurationFileExtension string
+	environments      []string
 }
 
 func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -67,96 +70,71 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var nextMinor string
 		var nextMajor string
 		var nextBuildNumber string
-		var tempFile *os.File
+		var fileChanges []FileChange
 
-		file, err := service.File(parameters.Branch, service.InfoPlistPath)
+		for _, environment := range h.environments {
+			path := h.configurationDirectoryPath + environment + h.configurationFileExtension
+			if err != nil {
+				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
+				break
+			}
+			file, err := service.File(parameters.Branch, path)
+			if err != nil {
+				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
+				return
+			}
+			fileChanges = append(fileChanges, FileChange {
+				Content: file,
+				Path:    path,
+			})
+		}
+		if len(fileChanges) != len(h.environments) {
+			return
+		}
+
+		file, err := service.File(parameters.Branch, service.XcconfigPath)
 		if err != nil {
 			responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
 			return
 		}
 
-		tempFile, err = ioutil.TempFile("", "applebot-")
+		versions := map[string]string{}
+
+		lines := strings.Split(string(file), "\n")
+		for _, line := range lines {
+			if !strings.Contains(line, "=") {
+				continue
+			}
+			pair := strings.Split(line, "=")
+			versions[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
+		}
+
+		currentVersion = versions["APP_VERSION"]
+		currentBuildNumber = versions["BUILD_VERSION"]
+
+		version, err := semver.Make(currentVersion)
 		if err != nil {
 			responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
 			return
 		}
+		version.Patch += 1
+		nextPatch = version.String()
 
-		if strings.HasSuffix(service.InfoPlistPath, ".xcconfig") {
-			versions := map[string]string{}
+		version.Minor += 1
+		version.Patch = 0
+		nextMinor = version.String()
 
-			lines := strings.Split(string(file), "\n")
-			for _, line := range lines {
-				if !strings.Contains(line, "=") {
-					continue
-				}
-				pair := strings.Split(line, "=")
-				versions[strings.TrimSpace(pair[0])] = strings.TrimSpace(pair[1])
-			}
+		version.Major += 1
+		version.Minor = 0
+		version.Patch = 0
+		nextMajor = version.String()
 
-			currentVersion = versions["APP_VERSION"]
-			currentBuildNumber = versions["BUILD_VERSION"]
-
-			version, err := semver.Make(currentVersion)
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			version.Patch += 1
-			nextPatch = version.String()
-
-			version.Minor += 1
-			version.Patch = 0
-			nextMinor = version.String()
-
-			version.Major += 1
-			version.Minor = 0
-			version.Patch = 0
-			nextMajor = version.String()
-
-			buildNumber, err := strconv.Atoi(currentBuildNumber)
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			nextBuildNumber = strconv.Itoa(buildNumber + 1)
-		} else {
-			infoPlist, err := NewInfoPlist(file)
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-
-			bytes, err := infoPlist.serialized()
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			tempFile.Write(bytes)
-
-			currentVersion = infoPlist.VersionString()
-			currentBuildNumber = infoPlist.BuildNumberString()
-
-			nextPatch, err = infoPlist.NextPatch()
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			nextMinor, err = infoPlist.NextMinor()
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			nextMajor, err = infoPlist.NextMajor()
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-			nextBuildNumber, err = infoPlist.NextBuildNumber()
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
+		buildNumber, err := strconv.Atoi(currentBuildNumber)
+		if err != nil {
+			responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
+			return
 		}
+		nextBuildNumber = strconv.Itoa(buildNumber + 1)
 
 		buildParameters := BuildParameters{
 			Branch:             parameters.Branch,
@@ -168,7 +146,7 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			NextMinor:          nextMinor,
 			NextMajor:          nextMajor,
 			NextBuildNumber:    nextBuildNumber,
-			InfoPlist:          tempFile.Name(),
+			FileChanges:        fileChanges,
 		}
 
 		responseAction(w, message.OriginalMessage, fmt.Sprintf("Branch: `%s` ✔︎\nCurrent Version: `%s (%s)`\nNext Version:", parameters.Branch, currentVersion, currentBuildNumber), versionOptions(buildParameters))
@@ -182,32 +160,27 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case actionRelease, actionInternal:
 		// FIXME
 
-		bytes, err := ioutil.ReadFile(parameters.InfoPlist)
-		if err != nil {
-			responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-			return
-		}
-
-		var infoPlist *InfoPlist
-		if strings.HasSuffix(service.InfoPlistPath, "Info.plist") {
-			infoPlist, err = NewInfoPlist(bytes)
-			if err != nil {
-				responseError(w, message.OriginalMessage, "Error occurred.", fmt.Sprintf("%s", err))
-				return
-			}
-		}
-
 		nextVersion := fmt.Sprintf("%s (%s)", parameters.Version, parameters.BuildNumber)
 		responseMessage(w, message.OriginalMessage, fmt.Sprintf("Releasing `%s` to %s ...", nextVersion, destination(action.Name)), "")
 
 		go func() {
-			if strings.HasSuffix(service.InfoPlistPath, "Info.plist") {
-				infoPlist.SetVersion(parameters.Version, parameters.BuildNumber)
-				bytes, _ = infoPlist.serialized()
-			} else {
-				bytes = []byte(fmt.Sprintf("APP_VERSION = %s\nBUILD_VERSION = %s", parameters.Version, parameters.BuildNumber))
+			appVersionRegex := regexp.MustCompile(`^(APP_VERSION\s*=\s*)(([0-9]\.*)+)$`)
+			buildVersionRegex := regexp.MustCompile(`^(BUILD_VERSION\s*=\s*)([0-9]+)$`)
+			fileChanges := []FileChange{}
+			for _, fileChange := range parameters.FileChanges {
+				rawFileContents := ""
+				lines := strings.Split(string(fileChange.Content), "\n")
+				for _, line := range lines {
+					line = appVersionRegex.ReplaceAllString(line, "$1" + parameters.Version)
+					line = buildVersionRegex.ReplaceAllString(line, "$1" + parameters.BuildNumber)
+					rawFileContents = rawFileContents + line
+				}
+				bytes := []byte(rawFileContents)
+				fileChanges = append(fileChanges, FileChange {
+					Content: bytes,
+					Path: fileChange.Path,
+				})
 			}
-
 			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 			commitBranch := fmt.Sprintf("%s/%s-%s-%s", branchPrefix(action.Name), parameters.Version, parameters.BuildNumber, timestamp)
 			title := fmt.Sprintf("Release %s (%s)", parameters.Version, parameters.BuildNumber)
@@ -219,8 +192,7 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			u, err := service.PushPullRequest(PullRequest{
 				TargetBranch:  parameters.Branch,
 				CommitBranch:  commitBranch,
-				FileContent:   bytes,
-				FilePath:      service.InfoPlistPath,
+				FileChanges:   fileChanges,
 				Title:         title,
 				CommitMessage: commitMessage,
 			})

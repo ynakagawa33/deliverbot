@@ -13,7 +13,8 @@ type BuildParameters struct {
 	NextMinor          string `json:"next_minor"`
 	NextMajor          string `json:"next_major"`
 	NextBuildNumber    string `json:"next_build_number"`
-	InfoPlist          string `json:"info_plist"`
+	
+	FileChanges        []FileChange `json:"file_changes"`
 }
 
 func NewBuildParameters(jsonStr string) BuildParameters {
