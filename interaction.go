@@ -159,9 +159,15 @@ func (h interactionHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				rawFileContents := ""
 				lines := strings.Split(string(file), "\n")
 				for _, line := range lines {
-					line = appVersionRegex.ReplaceAllString(line, "$1" + parameters.Version)
-					line = buildVersionRegex.ReplaceAllString(line, "$1" + parameters.BuildNumber)
-					rawFileContents = rawFileContents + line
+					appVersionMatch := appVersionRegex.FindAllStringSubmatch(line, -1)
+					if len(appVersionMatch) != 0 {
+						line = appVersionMatch[0][1] + parameters.Version
+					}
+					buildVersionMatch := buildVersionRegex.FindAllStringSubmatch(line, -1)
+					if len(buildVersionMatch) != 0 {
+						line = buildVersionMatch[0][1] + parameters.BuildNumber
+					}
+					rawFileContents = rawFileContents + line + "\n"
 				}
 				bytes := []byte(rawFileContents)
 				fileChanges = append(fileChanges, FileChange {
