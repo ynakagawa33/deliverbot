@@ -25,5 +25,5 @@ func NewBuildParameters(jsonStr string) BuildParameters {
 
 func (v BuildParameters) string() string {
 	bytes, _ := json.Marshal(v)
-	return string(bytes[:])
+	return string(bytes)
 }
