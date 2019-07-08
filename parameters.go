@@ -14,7 +14,7 @@ type BuildParameters struct {
 	NextMajor          string `json:"next_major"`
 	NextBuildNumber    string `json:"next_build_number"`
 	
-	FileChanges        []FileChange `json:"file_changes"`
+	FileChanges        []FileChange `json:"file_changes,omitempty"`
 }
 
 func NewBuildParameters(jsonStr string) BuildParameters {
@@ -24,6 +24,9 @@ func NewBuildParameters(jsonStr string) BuildParameters {
 }
 
 func (v BuildParameters) string() string {
+	tempFileChanges := v.FileChanges
+	v.FileChanges = nil
 	bytes, _ := json.Marshal(v)
-	return string(bytes)
+	v.FileChanges = tempFileChanges
+	return string([:]])
 }
